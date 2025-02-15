@@ -3,6 +3,7 @@ import time
 import os
 from google import genai
 import speech_recognition as sr
+import subprocess
 
 
 os.environ['PYTHONWARNINGS']='ignore'
@@ -14,13 +15,19 @@ os.environ['ALSA_LOG_LEVEL']='0'
 
 API='AIzaSyCdx7oSFOXW2ZFfKbHLZwhfSUc2OrPeBOM'
 client = genai.Client(api_key=API)
+audio_path="../temp_audio/output.mp3"
 
+def generate_voice(text):
+    
+    tts = gTTS(text=text, lang="en")
+    tts.save(audio_path)
+    os.system(audio_path)
+    os.remove(audio_path)
+    
 
 r = sr.Recognizer() 
 
 
-# Loop infinitely for user to
-# speak
 
 while(1):    
     
@@ -30,6 +37,7 @@ while(1):
         
         # use the microphone as source for input.
         with sr.Microphone() as source:
+            print("Wait a moment")
             
             # wait for a second to let the recognizer
             # adjust the energy threshold based on
@@ -42,25 +50,38 @@ while(1):
             # Using google to recognize audio
             MyText = r.recognize_google(audio2)
             MyText = MyText.lower()
-            response = client.models.generate_content(
-                    model="gemini-2.0-flash", contents=MyText+ ';be very very short'
-            )
 
-            text=response.text
-            tts = gTTS(text=text, lang="en")
+            if MyText=="open tracker":
+                print("Opening Tracker...")
+                generate_voice("Opening Tracker")
+                # Replace 'track_object.py' with your actual object tracking software/script
+                tracking_process=subprocess.Popen(['python', 'reddetect.py'])
 
-            # Save as an MP3 file
-            tts.save("../temp_audio/output.mp3")
-
-
-
-            os.system("mpg321 ../temp_audio/output.mp3")
-
-            #time.sleep(2)
-
-            os.remove("../temp_audio/output.mp3")
+            elif MyText == "stop tracker" or MyText=="kill tracker" and tracking_process is not None:
+                # Stop the subprocess using terminate()
+                print("Stopping Tracker...")
+                generate_voice("Stopping Object Tracking")
+                tracking_process.terminate()  # Terminate the subprocess
+                tracking_process = None  # Reset the process variable
+                print("Tracking program stopped.")
             
-            time.sleep(3)
+            elif MyText=="go to sleep":
+                
+                print("Signing Off")
+                generate_voice("OK GOODBYE, HAVE A GOOD DAY!!")
+                break
+
+            else:
+                
+                response = client.models.generate_content(
+                        model="gemini-2.0-flash", contents=MyText+ ';be very very short'
+                )
+    
+                text=response.text
+                generate_voice(text)
+                
+                
+                time.sleep(2)
             
     except sr.RequestError as e:
         print(f"Could not request results")
